@@ -1,15 +1,11 @@
 import argparse
 import re
-import requests
-import json
-from utils import  read_warc_file, retrieve_bad_words
 import utils
-from datasets import load_dataset
 from typing import Set, Dict
 import bs4
 import string
-import html2text
 from tqdm import tqdm
+
 
 def compare(warc_file, wet_file, url, output_warc=False):
     warc = utils.read_warc_file_url(warc_file, url).decode()
@@ -21,13 +17,13 @@ def compare(warc_file, wet_file, url, output_warc=False):
     print(url)
     print("Passes heuristic quality filter:", passes_check)
     print(cleaned_nopii_text)
-    print('\n\n\n')
+    print("\n\n\n")
     print("Wet:\n", wet)
     if output_warc:
-        print('\n\n\n')
-        print('Warc:\n', warc)
+        print("\n\n\n")
+        print("Warc:\n", warc)
 
-        
+
 def html_to_text(html: bytes) -> str:
     """Converts HTML content to plain text..
     Args:
@@ -35,12 +31,12 @@ def html_to_text(html: bytes) -> str:
     Returns:
         str: Plain text extracted from HTML.
     """
-    return bs4.BeautifulSoup(html, 'html.parser').get_text()
+    return bs4.BeautifulSoup(html, "html.parser").get_text()
 
 
 def replace_pii(text: str) -> str:
     """Masks personally identifiable information (PII) from text with the specified masking formats.
-    Args: 
+    Args:
         text (str): Candidate text.
     Returns:
         str: Text with PII obfuscated.
@@ -51,17 +47,19 @@ def replace_pii(text: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """Removes substrings identified as low-quality according to alphanumeric, whitespace and valid document checks.  
+    """Removes substrings identified as low-quality according to alphanumeric, whitespace and valid document checks.
     Args:
         text (str): document to process.
     Returns:
         str: cleaned document
     """
-    long_word = re.compile(r'[a-zA-Z0-9]{101,}')
-    no_punct = re.compile('[^' + string.punctuation + ']')
+    long_word = re.compile(r"[a-zA-Z0-9]{101,}")
+    no_punct = re.compile("[^" + string.punctuation + "]")
+
     def is_clean(p: str) -> bool:
-      return len(re.findall(long_word, p)) == 0 and len(re.findall(no_punct, p)) > 0
-    return '\n'.join([p for p in text.split('\n') if is_clean(p)])
+        return len(re.findall(long_word, p)) == 0 and len(re.findall(no_punct, p)) > 0
+
+    return "\n".join([p for p in text.split("\n") if is_clean(p)])
 
 
 def heuristic_quality_filter(text: str) -> bool:
@@ -71,10 +69,12 @@ def heuristic_quality_filter(text: str) -> bool:
     Returns:
         bool: returns True if the document passes the filters, False otherwise.
     """
-    bad_words = retrieve_bad_words()  # Read the bad words list
+    bad_words = utils.retrieve_bad_words()  # Read the bad words list
 
     sep = string.punctuation + string.whitespace
-    words = {word.lower() for word in text.split(sep)}
+    words = {
+        word.lower() for word in re.split(r"[" + sep + "]", text) if word.split(sep)
+    }
     # Check for bad words
     if len(bad_words.intersection(words)) > 0:
         return False
@@ -89,8 +89,14 @@ def heuristic_quality_filter(text: str) -> bool:
         return False
 
     # Check for allowed character percentage
-    allowed_chars = ('[' + string.ascii_letters + string.digits +
-                     string.punctuation + string.whitespace + ']')
+    allowed_chars = (
+        "["
+        + string.ascii_letters
+        + string.digits
+        + string.punctuation
+        + string.whitespace
+        + "]"
+    )
     allowed_count = len(re.findall(allowed_chars, text))
     if allowed_count / len(text) < 0.8:
         return False
@@ -98,25 +104,26 @@ def heuristic_quality_filter(text: str) -> bool:
     return True
 
 
-if __name__ == '__main__' :
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fname',
-                        type=str,
-                        default='',
-                        help='Specify the path for your warc file.')
-    parser.add_argument('--num_records',
-                        type=int,
-                        default=None,
-                        help='Specify the number of records you want to parse'
-                        ' (only used for debugging with smaller sets)')
-    parser.add_argument('--filter', action='store_true')
-    parser.add_argument('--count_only', action='store_true')
+    parser.add_argument(
+        "--fname", type=str, default="", help="Specify the path for your warc file."
+    )
+    parser.add_argument(
+        "--num_records",
+        type=int,
+        default=None,
+        help="Specify the number of records you want to parse"
+        " (only used for debugging with smaller sets)",
+    )
+    parser.add_argument("--filter", action="store_true")
+    parser.add_argument("--count_only", action="store_true")
     args = parser.parse_args()
 
     count = 0
     passed_count = 0
     if args.fname:
-        for url, html_text in tqdm(read_warc_file(args.fname, args.num_records)):
+        for url, html_text in tqdm(utils.read_warc_file(args.fname, args.num_records)):
             count += 1
             text = html_to_text(html_text)
             cleaned_text = clean_text(text)
@@ -132,6 +139,6 @@ if __name__ == '__main__' :
             print("Passes heuristic quality filter:", passes_check)
             print(cleaned_nopii_text)
             print("\n\n\n")
-        print(f'Total count: {count}, passed count: {passed_count}')
+        print(f"Total count: {count}, passed count: {passed_count}")
     else:
         print("Usage: python homework.py --fname data.warc")
