@@ -9,6 +9,7 @@ from typing import Set, Dict
 import bs4
 import string
 import html2text
+from tqdm import tqdm
 
 def compare(warc_file, wet_file, url, output_warc=False):
     warc = utils.read_warc_file_url(warc_file, url).decode()
@@ -105,20 +106,32 @@ if __name__ == '__main__' :
                         help='Specify the path for your warc file.')
     parser.add_argument('--num_records',
                         type=int,
-                        default=30,
+                        default=None,
                         help='Specify the number of records you want to parse'
                         ' (only used for debugging with smaller sets)')
+    parser.add_argument('--filter', action='store_true')
+    parser.add_argument('--count_only', action='store_true')
     args = parser.parse_args()
 
+    count = 0
+    passed_count = 0
     if args.fname:
-        for url, html_text in read_warc_file(args.fname, args.num_records):
+        for url, html_text in tqdm(read_warc_file(args.fname, args.num_records)):
+            count += 1
             text = html_to_text(html_text)
             cleaned_text = clean_text(text)
             cleaned_nopii_text = replace_pii(cleaned_text)
             passes_check = heuristic_quality_filter(cleaned_nopii_text)
+            if passes_check:
+                passed_count += 1
+            if args.filter and not passes_check:
+                continue
+            if args.count_only:
+                continue
             print(url)
             print("Passes heuristic quality filter:", passes_check)
             print(cleaned_nopii_text)
             print("\n\n\n")
+        print(f'Total count: {count}, passed count: {passed_count}')
     else:
         print("Usage: python homework.py --fname data.warc")
