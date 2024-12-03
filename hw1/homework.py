@@ -54,10 +54,10 @@ def clean_text(text: str) -> str:
         str: cleaned document
     """
     long_word = re.compile(r"[a-zA-Z0-9]{101,}")
-    no_punct = re.compile("[^" + string.punctuation + "]")
+    punct = re.compile("[" + string.punctuation + "]")
 
     def is_clean(p: str) -> bool:
-        return len(re.findall(long_word, p)) == 0 and len(re.findall(no_punct, p)) > 0
+        return len(re.findall(long_word, p)) == 0 and len(re.findall(punct, p)) > 0
 
     return "\n".join([p for p in text.split("\n") if is_clean(p)])
 

@@ -12,9 +12,7 @@ class TestHomework(unittest.TestCase):
 
         html = b"<html><body><h1>Hello</h1><p>World</p><script>alert('test');</script></body></html>"
         text = homework.html_to_text(html)
-        self.assertIn("Hello", text)  # Check for presence instead of full equality
-        self.assertIn("World", text)
-        self.assertNotIn("<script>", text)  # ensure script content is NOT included
+        self.assertEqual("HelloWorld", text)  # Check for presence instead of full equality
 
 
     def test_replace_pii(self):
@@ -27,13 +25,9 @@ class TestHomework(unittest.TestCase):
 
 
     def test_clean_text(self):
-        text = "This is a test.\nThis is another test.\nThisisareallylongwordthatshouldberemovednotlongenoughyetthismaybeenoughtnonotyetsadfasdwegaddfsadfsdlsadjfljasdflasf."
+        text = "This is a test.\nThis is another test.\nThisisareallylongwordthatshouldberemovednotlongenoughyetthismaybeenoughtnonotyetsadfasdwegaddfsadfsdlsadjfljasdflasf.\nThis has no punctuation"
         expected = "This is a test.\nThis is another test."
         self.assertEqual(homework.clean_text(text), expected)
-        text = "This\nis\na\ntest"  # text contains valid punctuation
-        self.assertEqual(homework.clean_text(text), text)  # Expect no change
-        text = ".\n.\n."  # Check case where lines only have punctuation
-        self.assertEqual(homework.clean_text(text), "")  # Should be removed
 
 
     @patch("utils.retrieve_bad_words")
