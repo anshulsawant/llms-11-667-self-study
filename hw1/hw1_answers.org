@@ -21,7 +21,7 @@ Uncopyrighted (in the US) books and books explicitly allowed by authors for use 
 *** Model trained on the dataset
 It is part of Dolma. Hence any models trained on Dolma. It is probably a part of many other datasets as well.
 *** Dataset license
-Uncopyrighted work can be distributed freely by anyone. For works where authors grant permission to the project, redistribution is restricted. Does LLMs output count as a redistribution? Debatable.
+Uncopyrighted work can be distributed freely by anyone. For works where authors grant permission to the project, redistribution is restricted. Does LLM's output count as a redistribution? Debatable.
 *** Task where trained model will do poorly
 1. Generating a blog post. The tone of blogs is very different from that of most books.
 
@@ -70,7 +70,7 @@ The most significant differences I see is that
 ** Non-english languages
 My filter tries to exclude all texts not in roman script.
 ** Domain specific filtering
-Coding domain will have different cleaning and fitering requirements. Depending on use case, we may want to remove comments. Filtering will certainly involve coinsider files names with certain extensions only.
+Coding domain will have different cleaning and fitering requirements. Depending on use case, we may want to remove comments. Filtering will certainly involve considering files names with certain extensions only.
 ** Additional Data Filtering Stages
 1. Language filtering (natural or coding)
 2. Classifier based quality filtering
