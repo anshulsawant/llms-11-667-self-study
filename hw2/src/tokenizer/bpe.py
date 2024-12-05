@@ -202,7 +202,7 @@ class ASCIIBPETokenizer:
 class UnicodeBPETokenizer:
     def __init__(self):
         # build initial vocab using all unicode bytes (0 - 255)
-        self.vocab: list[bytes] = [int.to_bytes(i) for i in range(256)]
+        self.vocab: list[bytes] = [bytes(range(256))]
 
         # self.merge_rules maps a bigram (a pair of token ids) to a single token id
         self.merge_rules: list[Bigram, int] = {}
