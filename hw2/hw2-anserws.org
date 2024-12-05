@@ -1,0 +1,7 @@
+* BPE Tokenizer
+** A: Counterexamples
+*** Injective
+*** Invertible
+*** Preserves concatenation
+** B: Why is it generally impossible to build non-trivial rokenizers that preserve concatenation
+Because preserving concatenation implies that concatenation of letter by letter cocatenation is that same as concatenation of the letters. Thus, tokenise("Then") = tokenise("T") + tokenise("h") + tokenise("e") + tokenise("n"). Thus, tokenisation has to be some representation of the alphabet.
