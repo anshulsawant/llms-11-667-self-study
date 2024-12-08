@@ -1,0 +1,37 @@
+{
+    "stdout_visibility": "visible",
+    "tests": [
+        {
+            "score": 5,
+            "status": "passed",
+            "max_score": 5,
+            "name": "test_q_kT_v",
+            "output": "",
+            "visibility": "visible"
+        },
+        {
+            "score": 5,
+            "status": "passed",
+            "max_score": 5,
+            "name": "test_self_attention",
+            "output": "",
+            "visibility": "visible"
+        },
+        {
+            "score": 5,
+            "status": "passed",
+            "max_score": 5,
+            "name": "test_mha_forward",
+            "output": "",
+            "visibility": "visible"
+        },
+        {
+            "score": 5,
+            "status": "passed",
+            "max_score": 5,
+            "name": "test_lm_forward_on_cpu",
+            "output": "",
+            "visibility": "visible"
+        }
+    ]
+}

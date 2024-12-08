@@ -63,7 +63,6 @@ def test_self_attention():
         q, k, v, attn_mask=attention_mask_with_causal
     )
     attn_ref = rearrange(attn_ref_multihead, "b h s hd -> b s (h hd)")
-
     assert torch.allclose(
         attn[~attn_ref.isnan()], attn_ref[~attn_ref.isnan()], atol=1e-5, rtol=1e-3
     )

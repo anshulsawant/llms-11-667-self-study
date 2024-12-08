@@ -78,6 +78,7 @@ class MultiHeadAttention(nn.Module):
             attn: Outputs of applying multi-head attention to the inputs (B x S x D)
         """
 
+        batch_size, _, seq_len, _ = q.size()
         # compute the attention weights using q and kT
         qkT = q @ kT
         # B X H X S X S
@@ -106,7 +107,6 @@ class MultiHeadAttention(nn.Module):
 
         Hint: torch.triu or torch.tril
         """
-        seq_len = q.size()[2]
         causal_mask = torch.tril(torch.ones((seq_len, seq_len))).to(device=q.device)
 
         """
@@ -146,7 +146,6 @@ class MultiHeadAttention(nn.Module):
         Note that `mask` needs to be on the same device as the input tensors
         q, kT and v.
         """
-        batch_size = q.size()[0]
         if attention_mask is None:
             mask = causal_mask.repeat((batch_size, 1, 1))
         else:
@@ -154,17 +153,14 @@ class MultiHeadAttention(nn.Module):
 
         # B X S X S
         mask = mask.to(device=q.device, dtype=torch.bool).unsqueeze(1)
-
         """
         Fill unmasked_attn_logits with float_min wherever causal mask has value False.
 
         Hint: torch.masked_fill
         """
-        float_min = torch.finfo(q.dtype).min
-        # B X H X S X S
-        attn_logits = torch.masked_fill(unmasked_attn_logits, torch.logical_not(mask), float_min) 
-        # B X H X S X S
+        attn_logits = torch.masked_fill(unmasked_attn_logits, torch.logical_not(mask), float('-inf')) 
         attn_weights = torch.softmax(attn_logits, dim=-1) 
+        attn_weights = torch.masked_fill(attn_weights, torch.logical_not(mask), 0.0)
         attn_weights = self.dropout(attn_weights)
 
         # scale value by the attention weights.
