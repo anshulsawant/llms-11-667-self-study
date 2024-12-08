@@ -160,7 +160,7 @@ class MultiHeadAttention(nn.Module):
         """
         attn_logits = torch.masked_fill(unmasked_attn_logits, torch.logical_not(mask), float('-inf')) 
         attn_weights = torch.softmax(attn_logits, dim=-1) 
-        attn_weights = torch.masked_fill(attn_weights, torch.logical_not(mask), 0.0)
+        attn_weights = torch.nan_to_num(attn_weights)
         attn_weights = self.dropout(attn_weights)
 
         # scale value by the attention weights.
