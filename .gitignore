@@ -166,3 +166,4 @@ cython_debug/
 *.wat
 *~
 my_data.txt
+*.npz
