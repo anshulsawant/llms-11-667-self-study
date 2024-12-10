@@ -27,10 +27,10 @@ class MultiHeadAttention(nn.Module):
         self.n_embd = n_embd
         attn_hidden_dim = n_embd // n_head
 
-        self.q_attn = nn.Linear(n_embd, n_embd)
-        self.k_attn = nn.Linear(n_embd, n_embd)
-        self.v_attn = nn.Linear(n_embd, n_embd)
-        self.proj = nn.Linear(n_embd, n_embd)
+        self.q_attn = nn.Linear(n_embd, n_embd, bias=False)
+        self.k_attn = nn.Linear(n_embd, n_embd, bias=False)
+        self.v_attn = nn.Linear(n_embd, n_embd, bias=False)
+        self.proj = nn.Linear(n_embd, n_embd, bias=False)
         self.dropout = nn.Dropout(p_dropout)
 
         scale_factor = 1 / torch.sqrt(torch.tensor(attn_hidden_dim))
@@ -50,7 +50,6 @@ class MultiHeadAttention(nn.Module):
             v: The value vector used by multi-head attention (B x H x S x HD)
         """
         B, S, D = x.size()
-        assert(D == self.n_embd)
         q = self.q_attn(x).view(B, S, self.n_head, D//self.n_head).transpose(1, 2) 
         kT = self.k_attn(x).view(B, S, self.n_head, D//self.n_head).transpose(1, 2).transpose(2,3)
         v = self.q_attn(x).view(B, S, self.n_head, D//self.n_head).transpose(1, 2) 
@@ -198,8 +197,8 @@ class FeedForward(nn.Module):
         super().__init__()
 
         middle_dim = 4 * n_embd  # stick to what GPT-2 does
-        self.linear_in = nn.Linear(n_embd, middle_dim)
-        self.linear_out = nn.Linear(middle_dim, n_embd)
+        self.linear_in = nn.Linear(n_embd, middle_dim, bias=False)
+        self.linear_out = nn.Linear(middle_dim, n_embd, bias=False)
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
@@ -258,7 +257,7 @@ class DecoderBlock(nn.Module):
         https://sh-tsang.medium.com/review-pre-ln-transformer-on-layer-normalization-in-the-transformer-architecture-b6c91a89e9ab
         """
 
-        residual = self.mha(self.ln_1(x)) + x
+        residual = self.mha(self.ln_1(x), attention_mask) + x
         return self.ff(self.ln_2(residual)) + residual
 
 
@@ -284,8 +283,11 @@ class DecoderLM(nn.Module):
         self.p_dropout = p_dropout
 
         self.token_embeddings = nn.Embedding(n_vocab, n_embd)
-        self.linear = nn.Linear(n_embd, n_vocab)
+        self.linear = nn.Linear(n_embd, n_vocab, bias=False)
+        
+        ## Weight tying
         self.linear.weight = self.token_embeddings.weight
+        
         self.position_embeddings = nn.Embedding(n_positions, n_embd)
         self.blocks = nn.ModuleList(
             [DecoderBlock(n_embd, n_head) for _ in range(n_layer)]
@@ -353,6 +355,7 @@ class DecoderLM(nn.Module):
             if attention_mask is None
             else torch.cumsum(attention_mask, dim=-1) - 1)
         position_ids = position_ids.to(dtype=torch.long)
+        position_ids = torch.masked_fill(position_ids, position_ids < 0, 0)
         positional_embeddings = self.position_embeddings(position_ids)
         return self.dropout(token_embeddings + positional_embeddings)
 
@@ -396,7 +399,7 @@ class DecoderLM(nn.Module):
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not ...:
+            if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
