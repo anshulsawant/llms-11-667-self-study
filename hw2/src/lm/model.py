@@ -189,16 +189,27 @@ class MultiHeadAttention(nn.Module):
         return y
 
 
+class Swish(nn.Module):
+    def __init__(self):
+        super(Swish, self).__init__()
+        # Initialize beta as 1.0
+        self.beta = nn.Parameter(torch.tensor(1.0))
+
+    def forward(self, x):
+        return x * torch.sigmoid(self.beta * x)
+
+
 class FeedForward(nn.Module):
     """The feedforward attention module in a decoder block."""
 
-    def __init__(self, n_embd: int, p_dropout: float = 0.1):
+    def __init__(self, n_embd: int, swish: bool, p_dropout: float = 0.1):
         """Initialize the modules used by feedforward."""
         super().__init__()
 
         middle_dim = 4 * n_embd  # stick to what GPT-2 does
         self.linear_in = nn.Linear(n_embd, middle_dim, bias=False)
         self.linear_out = nn.Linear(middle_dim, n_embd, bias=False)
+        self.swish = swish
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
@@ -215,7 +226,8 @@ class FeedForward(nn.Module):
         self.dropout to the output.
         """
 
-        y = F.gelu(self.linear_in(x))
+        y = (F.gelu(self.linear_in(x)) if not self.swish
+             else Swish(self.linear_in(x)))
         z = self.dropout(self.linear_out(y))
         return z
 
@@ -223,13 +235,13 @@ class FeedForward(nn.Module):
 class DecoderBlock(nn.Module):
     """A single decoder block in a decoder language model."""
 
-    def __init__(self, n_embd: int, n_head: int):
+    def __init__(self, n_embd: int, n_head: int, swish: bool):
         """Initialize the modules used in a decoder block."""
         super().__init__()
 
         self.ln_1 = nn.LayerNorm(n_embd)
         self.mha = MultiHeadAttention(n_embd, n_head)
-        self.ff = FeedForward(n_embd)
+        self.ff = FeedForward(n_embd, swish=swish)
         self.ln_2 = nn.LayerNorm(n_embd)
 
     def forward(
@@ -271,6 +283,7 @@ class DecoderLM(nn.Module):
         n_head: int,
         n_positions: int,
         n_layer: int,
+        swish: bool,
         p_dropout: float = 0.1,
     ):
         super().__init__()
@@ -290,7 +303,7 @@ class DecoderLM(nn.Module):
         
         self.position_embeddings = nn.Embedding(n_positions, n_embd)
         self.blocks = nn.ModuleList(
-            [DecoderBlock(n_embd, n_head) for _ in range(n_layer)]
+            [DecoderBlock(n_embd, n_head, swish=swish) for _ in range(n_layer)]
         )
         self.ln = nn.LayerNorm(n_embd)
         self.dropout = nn.Dropout(self.p_dropout)
