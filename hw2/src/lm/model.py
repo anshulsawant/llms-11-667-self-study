@@ -210,6 +210,8 @@ class FeedForward(nn.Module):
         self.linear_in = nn.Linear(n_embd, middle_dim, bias=False)
         self.linear_out = nn.Linear(middle_dim, n_embd, bias=False)
         self.swish = swish
+        if swish:
+            self.swish = Swish()
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
@@ -226,8 +228,8 @@ class FeedForward(nn.Module):
         self.dropout to the output.
         """
 
-        y = (F.gelu(self.linear_in(x)) if not self.swish
-             else Swish(self.linear_in(x)))
+        y = (F.gelu(self.linear_in(x)) if self.swish is not None
+             else self.swish(self.linear_in(x)))
         z = self.dropout(self.linear_out(y))
         return z
 
