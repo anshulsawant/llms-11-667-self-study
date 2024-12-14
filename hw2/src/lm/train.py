@@ -146,13 +146,16 @@ def compute_language_modeling_loss(
 
 
 def train(
-    model: DecoderLM,
-    batch_sampler: Iterator[torch.LongTensor],
-    optimizer: torch.optim.Optimizer,
-    lr_schedule: Callable[[int], float],
-    autocast: torch.autocast | nullcontext = nullcontext(),
-    num_training_steps: int = 0,
-    grad_accumulation_steps: int = 1,
+        model: DecoderLM,
+        batch_sampler: Iterator[torch.LongTensor],
+        optimizer: torch.optim.Optimizer,
+        lr_schedule: Callable[[int], float],
+        autocast: torch.autocast | nullcontext = nullcontext(),
+        num_training_steps: int = 0,
+        grad_accumulation_steps: int = 1,
+        early_stopping=False,
+        early_stopping_loss=None,
+        early_stopping_min_steps=None
 ) -> None:
     """A training loop for the language model
 
@@ -187,6 +190,11 @@ def train(
         optimizer.step()
         loss_mean = np.mean(losses).item()
 
+        stop_now = False
+        if early_stopping:
+            stop_now = (early_stopping_loss <= loss_mean and
+                        early_stopping_min_steps <= step)
+
         FLOPs_per_step = (
             model.flops_per_token
             * input_ids.shape[0]
@@ -203,6 +211,9 @@ def train(
             }
         )
         wandb.log({"train-loss": loss_mean, "learning-rate": lr}, step=step)
+        if stop_now:
+            print(f"Training loss too high. Loss is {loss_mean}. Stopping early.")
+            return
 
 
 @torch.inference_mode()
@@ -240,7 +251,8 @@ def evaluate(
     return eval_results
 
 
-def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], sweep=False, run_no=None):
+def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], sweep=False, run_no=None,
+                 early_stopping=False, early_stopping_loss=None, early_stopping_min_steps=None):
     os.makedirs(config.output_dir, exist_ok=True)
     OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
     print("#" * 40, OmegaConf.to_yaml(config).strip(), "#" * 40, sep="\n")
@@ -334,6 +346,9 @@ def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], swee
         autocast,
         config.num_training_steps,
         config.grad_accumulation_steps,
+        early_stopping=config.early_stopping,
+        early_stopping_loss=config.early_stopping_loss,
+        early_stopping_min_steps=config.early_stopping_min_steps
     )
 
     # evaluation
@@ -404,6 +419,10 @@ def build_sweep_config(hyper_param, output_dir, run_no, toy=False):
     config["min_lr"] = hyper_param["lr"][0]
     config["max_lr"] = hyper_param["lr"][1]
 
+    config["early_stopping"] = True
+    config["early_stopping_loss"] = 100
+    config["early_stopping_min_steps"] = 2000
+
     return OmegaConf.create(config)
     
 
@@ -446,7 +465,16 @@ def sweep(output_dir, n, toy):
     for config in generate_configs(output_dir, n=n, toy=toy):
         tags=["hyperparam-sweep"]
         model, eval_results = training_run(
-            config, train_tokens, val_tokens, max_flops=config.max_flops, tags=tags, sweep=True, run_no=i)
+            config,
+            train_tokens,
+            val_tokens,
+            max_flops=config.max_flops,
+            tags=tags,
+            sweep=True,
+            run_no=i,
+            early_stopping=config.early_stopping,
+            early_stopping_loss=config.early_stopping_loss,
+            early_stopping_min_steps=config.early_stopping_min_steps)
         i += 1
          
         with open(os.path.join(config.output_dir, "eval.json"), "w") as f:
