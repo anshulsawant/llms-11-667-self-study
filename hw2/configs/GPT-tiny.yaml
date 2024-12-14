@@ -5,7 +5,7 @@ model_config:
   n_head: 2                   # <- number of attention heads in multihead attention
   n_positions: 128            # <- the maximum number of tokens that the model can take
   n_layer: 2                  # <- number of decoder blocks
-  swish: True
+  swish: False
 device: auto                  # <- which device to put the model on (YOU DO NOT NEED TO CHANGE THIS)
 batch_size: 32                # <- number of sequences to feed into the model at a time
 seq_len: 128                  # <- length of each sequence in training and evaluation, <= model_config.n_positions

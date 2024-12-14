@@ -1,3 +1,4 @@
+import itertools
 import json
 import math
 import os
@@ -9,6 +10,7 @@ from contextlib import nullcontext
 from typing import Callable
 from rich import print
 
+import argparse
 import numpy as np
 import tiktoken
 import torch
@@ -205,17 +207,22 @@ def train(
 
 @torch.inference_mode()
 def evaluate(
-    model: DecoderLM,
-    batch_sampler: Iterator[torch.LongTensor],
-    autocast: torch.autocast | nullcontext = nullcontext(),
+        model: DecoderLM,
+        batch_sampler: Iterator[torch.LongTensor],
+        autocast: torch.autocast | nullcontext = nullcontext(),
+        test_run = False,
 ) -> dict[str, float]:
     losses = []
 
+    i = 0
     for input_ids in tqdm(batch_sampler, desc="evaluating.."):
         with autocast:
             logits = model(input_ids)
         loss = compute_language_modeling_loss(input_ids, logits)
         losses.append(loss.item())
+        i += 1
+        if test_run and i >= 100:
+            break;
 
     # mean of the losses is the average negative log likelihood
     mean_loss = sum(losses) / len(losses)
@@ -229,18 +236,18 @@ def evaluate(
     return eval_results
 
 
-def main():
-    enable_tf32()
-
-    # create an output directory and dump the configuration file
-    assert len(sys.argv) > 1, "provide a configuration file"
-    config = OmegaConf.load(sys.argv[1])
+def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[]):
     os.makedirs(config.output_dir, exist_ok=True)
     OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
     print("#" * 40, OmegaConf.to_yaml(config).strip(), "#" * 40, sep="\n")
-    wandb.init(project="llms-hw2", config=OmegaConf.to_container(config))
 
-    # initialize tokenizer and model
+    wandb.init(
+        project="llms-hw2",
+        config=OmegaConf.to_container(config),
+        tags=tags)
+    
+    assert config.seq_len <= config.model_config.n_positions
+
     tokenizer = tiktoken.get_encoding(config.tokenizer_encoding)
     device = determine_device() if config.device == "auto" else config.device
     model = DecoderLM(tokenizer.n_vocab, **config.model_config).to(device)
@@ -262,10 +269,6 @@ def main():
 
     # prepare data and data generator
     assert config.seq_len <= config.model_config.n_positions
-    tokens = np.load("data/tokens.npz")
-
-    train_tokens = torch.from_numpy(tokens["train"].astype(int))
-    val_tokens = torch.from_numpy(tokens["val"].astype(int))
 
     train_sampler = random_batch_sampler(
         train_tokens, device, config.batch_size, config.seq_len
@@ -274,6 +277,15 @@ def main():
         val_tokens, device, config.batch_size, config.seq_len
     )
     print(f"train dataset tokens = {len(train_tokens) / 1e6:.0f}M")
+    
+    if (max_flops):
+        config.num_training_steps = int(max_flops//(model.flops_per_token *
+                                                config.grad_accumulation_steps *
+                                                config.batch_size *
+                                                config.seq_len))
+        print(f"max_flops specified."
+              f" Overwriting num_training_steps with value {num_training_steps}.")
+
     FLOPs = (
         model.flops_per_token
         * config.num_training_steps
@@ -319,19 +331,131 @@ def main():
         config.grad_accumulation_steps,
     )
 
+    # evaluation
+    model.eval()
+    test_run = config.test_run if "test_run" in config else None
+    eval_results = evaluate(model, val_sampler, autocast, test_run=test_run)
+    print("evaluation results:", json.dumps(eval_results))
+    return model, eval_results
+
+
+def main(config_file):
+    enable_tf32()
+
+    config = OmegaConf.load(config_file)
+
+    tokens = np.load("data/tokens.npz")
+
+    train_tokens = torch.from_numpy(tokens["train"].astype(int))
+    val_tokens = torch.from_numpy(tokens["val"].astype(int))
+
+    model, eval_results = training_run(config, train_tokens, val_tokens)
+
     # save the trained model
     model_path = os.path.join(config.output_dir, "model.pt")
     torch.save(model.state_dict(), model_path)
     print(f"model saved to {model_path}")
 
-    # evaluation
-    model.eval()
-    eval_results = evaluate(model, val_sampler, autocast)
-    print("evaluation results:", json.dumps(eval_results))
     with open(os.path.join(config.output_dir, "eval.json"), "w") as f:
         json.dump(eval_results, f, indent=2)
     print("done!")
 
+def product_dict(**kwargs):
+    res = []
+    keys = kwargs.keys()
+    for instance in itertools.product(*kwargs.values()):
+        res.append(dict(zip(keys, instance)))
+    return res
 
+def build_sweep_config(hyper_param, output_dir, run_no, toy=False):
+    model_config = {}
+    model_config["n_embd"] = hyper_param["n_embd"]
+    model_config["n_head"] = hyper_param["n_head"]
+    model_config["n_positions"] = hyper_param["seq_len"]
+    model_config["n_layer"] = hyper_param["n_layer"]
+    model_config["swish"] = False
+
+    config = {}
+
+    config["model_config"] = model_config
+
+    config["output_dir"] = os.path.join(output_dir, str(run_no))
+
+    config["tokenizer_encoding"] = "gpt2"
+
+    config["device"] ="auto"
+    config["batch_size"] = hyper_param["batch_size"]
+    config["seq_len"] = hyper_param["seq_len"]
+    if toy:
+        config["num_training_steps"] = 10
+        config["num_warmup_steps"] = 4
+        config["test_run"] = True
+        config["max_flops"] = None
+    else:
+        config["max_flops"] = 1e+15
+        config["num_warmup_steps"] = 100
+    config["grad_accumulation_steps"] = 1
+    config["min_lr"] = hyper_param["lr"][0]
+    config["max_lr"] = hyper_param["lr"][1]
+
+    return OmegaConf.create(config)
+    
+
+def generate_configs(output_dir, n=50, toy=False):
+    count = 0
+    hyper_params = (product_dict(
+        n_embd = [4],
+        n_head = [2],
+        n_layer = [2],
+        lr = [(1e-3, 5e-3)],
+        batch_size = [2],
+        seq_len=[2]) if toy
+                    else product_dict(
+                            n_embd = [32, 64, 128],
+                            n_head = [2, 4, 8],
+                            n_layer = [2, 4, 8],
+                            lr = [(1e-3, 5e-3), (1e-4, 5e-4), (1e-5, 5e-5)],
+                            batch_size = [16, 32, 64],
+                            seq_len=[64, 128, 256]))
+    
+    indices = np.random.randint(0, len(hyper_params), size=n)
+    
+    for i in indices:
+        yield build_sweep_config(hyper_params[i], output_dir, count, toy=toy)
+        count += 1
+    
+    
+def sweep(output_dir, n, toy):
+    enable_tf32()
+    # create an output directory and dump the configuration file
+    output_dir = sys.argv[1]
+
+
+    tokens = np.load("data/tokens.npz")
+
+    train_tokens = torch.from_numpy(tokens["train"].astype(int))
+    val_tokens = torch.from_numpy(tokens["val"].astype(int))
+
+    for config in generate_configs(output_dir, n=n, toy=toy):
+        tags=["hyperparam-sweep"]
+        model, eval_results = training_run(
+            config, train_tokens, val_tokens, max_flops=config.max_flops, tags=tags)
+         
+        with open(os.path.join(config.output_dir, "eval.json"), "w") as f:
+            json.dump(eval_results, f, indent=2)
+
+    
+    
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file_or_dir', help="Output directory if a sweep, config file if as single run.")
+    parser.add_argument("--num_runs", help="Number of runs for hyperparam sweep",
+                        type=int, default=50)
+    parser.add_argument("--sweep", help="Whether to run a hyperparam sweep", action="store_true")
+    parser.add_argument("--toy", help="A tiny test run suitable for CPU", action="store_true")
+    args = parser.parse_args()
+    if args.sweep:
+        sweep(args.file_or_dir, args.num_runs, args.toy)
+    else:
+        main(args.file_or_dir)
+    
