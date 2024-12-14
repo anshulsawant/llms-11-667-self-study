@@ -284,7 +284,7 @@ def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[]):
                                                 config.batch_size *
                                                 config.seq_len))
         print(f"max_flops specified."
-              f" Overwriting num_training_steps with value {num_training_steps}.")
+              f" Overwriting num_training_steps with value {config.num_training_steps}.")
 
     FLOPs = (
         model.flops_per_token
