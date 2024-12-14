@@ -420,7 +420,7 @@ def generate_configs(output_dir, n=50, toy=False):
                             n_embd = [32, 64, 128],
                             n_head = [2, 4, 8],
                             n_layer = [2, 4, 8],
-                            lr = [(1e-3, 5e-3), (1e-4, 5e-4), (1e-5, 5e-5)],
+                            lr = [(1e-4, 5e-4), (1e-5, 5e-5), (1e-6, 5e-6)],
                             batch_size = [16, 32, 64],
                             seq_len=[64, 128, 256]))
     
