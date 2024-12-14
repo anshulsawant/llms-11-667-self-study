@@ -226,7 +226,11 @@ def evaluate(
 
     # mean of the losses is the average negative log likelihood
     mean_loss = sum(losses) / len(losses)
-    perplexity = math.exp(mean_loss)
+    perplexity = None
+    try:
+        perplexity = math.exp(mean_loss)
+    except OverflowError as e:
+        perplexity = float('inf')
 
     eval_results = {
         "val-loss": mean_loss,
@@ -245,7 +249,7 @@ def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], swee
         project="llms-hw2",
         name="sweep" + str(run_no) if sweep else None,
         config=OmegaConf.to_container(config),
-        tags=tags)
+        tags=tags, reinit=True)
     
     assert config.seq_len <= config.model_config.n_positions
 
@@ -336,6 +340,7 @@ def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], swee
     model.eval()
     test_run = config.test_run if "test_run" in config else None
     eval_results = evaluate(model, val_sampler, autocast, test_run=test_run)
+    wandb.finish()
     print("evaluation results:", json.dumps(eval_results))
     return model, eval_results
 
