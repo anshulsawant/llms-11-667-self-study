@@ -236,13 +236,14 @@ def evaluate(
     return eval_results
 
 
-def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[]):
+def training_run(config, train_tokens, val_tokens, max_flops=None, tags=[], sweep=False, run_no=None):
     os.makedirs(config.output_dir, exist_ok=True)
     OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
     print("#" * 40, OmegaConf.to_yaml(config).strip(), "#" * 40, sep="\n")
 
     wandb.init(
         project="llms-hw2",
+        name="sweep" + str(run_no) if sweep else None,
         config=OmegaConf.to_container(config),
         tags=tags)
     
@@ -436,10 +437,12 @@ def sweep(output_dir, n, toy):
     train_tokens = torch.from_numpy(tokens["train"].astype(int))
     val_tokens = torch.from_numpy(tokens["val"].astype(int))
 
+    i = 0
     for config in generate_configs(output_dir, n=n, toy=toy):
         tags=["hyperparam-sweep"]
         model, eval_results = training_run(
-            config, train_tokens, val_tokens, max_flops=config.max_flops, tags=tags)
+            config, train_tokens, val_tokens, max_flops=config.max_flops, tags=tags, sweep=True, run_no=i)
+        i += 1
          
         with open(os.path.join(config.output_dir, "eval.json"), "w") as f:
             json.dump(eval_results, f, indent=2)
