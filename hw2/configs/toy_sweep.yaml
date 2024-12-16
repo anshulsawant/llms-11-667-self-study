@@ -1,0 +1,31 @@
+output_dir: outputs/toy_sweep  # <- where the output files are written
+method: random
+num_run: 5                    # Not relevant if method is all
+tokenizer_encoding: gpt2      # <- the tokenizer encoding, used by tiktoken (YOU SHOULD NOT CHANGE THIS)
+save_model: False
+device: auto                  # <- which device to put the model on (YOU DO NOT NEED TO CHANGE THIS)
+name_prefix: toy-sweep
+tag: toy-sweep
+early_stopping: True
+early_stopping_loss: 100
+early_stopping_min_steps: 2000
+test_run: True
+parameters:
+  n_embd:
+    - 4                      # <- dimension of token and positional embeddings 
+  n_head:
+    - 2                 # <- number of attention heads in multihead attention
+  n_positions:
+    - 4           # <- the maximum number of tokens that the model can take
+  n_layer:
+    - 5                # <- number of decoder blocks
+  batch_size:
+    - 6                # <- number of sequences to feed into the model at a time
+  num_warmup_steps:
+    - 10          # <- number of warmup steps in cosine annealing
+  num_training_steps:
+    - 20      # <- number of training steps in cosine annealing
+  lr:
+    - [1e-5, 5e-5]
+    - [2e-5, 1e-4]
+    - [5e-6, 1e-5]
