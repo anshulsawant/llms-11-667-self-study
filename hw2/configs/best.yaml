@@ -12,5 +12,5 @@ seq_len: 64                  # <- length of each sequence in training and evalua
 num_warmup_steps: 100          # <- number of warmup steps in cosine annealing
 max_flops: 1e+15
 grad_accumulation_steps: 1    # <- number of micro steps of gradient accumulation before every model update
-min_lr: 1e-5                  # <- minimum learning rate in cosine annealing
-max_lr: 5e-5                  # <- maximum learning rate in cosine annealing
+min_lr: 5e-6                  # <- minimum learning rate in cosine annealing
+max_lr: 2.5e-5                  # <- maximum learning rate in cosine annealing
