@@ -6,3 +6,4 @@ pip install -r requirements.txt
 pip install -e .
 wandb login
 curl https://huggingface.co/datasets/yimingzhang/llms-hw2/resolve/main/tokens.npz -o data/tokens.npz -L
+export PYTHONPATH=$(pwd)/src/$PYTHONPATH
