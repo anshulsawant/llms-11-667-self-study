@@ -252,6 +252,7 @@ def evaluate(
 
 def training_run(config, train_tokens, val_tokens):
     max_flops = config.get('max_flops', None)
+    num_training_steps = config.get('num_training_steps', None)
     run_no = config.get('run_no', None)
     tag = config.get('tag', None)
     name_prefix = config.get('name_prefix', None)
@@ -266,9 +267,6 @@ def training_run(config, train_tokens, val_tokens):
 
 
     os.makedirs(config.output_dir, exist_ok=True)
-    OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
-    print("#" * 40, OmegaConf.to_yaml(config).strip(), "#" * 40, sep="\n")
-
     assert config.seq_len <= config.model_config.n_positions
 
     tokenizer = tiktoken.get_encoding(config.tokenizer_encoding)
@@ -298,17 +296,18 @@ def training_run(config, train_tokens, val_tokens):
     )
     print(f"train dataset tokens = {len(train_tokens) / 1e6:.0f}M")
     
-    if max_flops in config:
-        config.num_training_steps = int(max_flops//(model.flops_per_token *
+    if max_flops:
+        num_training_steps = int(max_flops//(model.flops_per_token *
                                                 config.grad_accumulation_steps *
                                                 config.batch_size *
                                                 config.seq_len))
+        config.num_training_steps = num_training_steps
         print(f"max_flops specified."
-              f" Overwriting num_training_steps with value {config.num_training_steps}.")
+              f" Overwriting num_training_steps with value {num_training_steps}.")
 
     FLOPs = (
         model.flops_per_token
-        * config.num_training_steps
+        * num_training_steps
         * config.grad_accumulation_steps
         * config.batch_size
         * config.seq_len
@@ -320,6 +319,9 @@ def training_run(config, train_tokens, val_tokens):
             "This is more than the max compute that we allow (1e+17). "
             "Please reduce your model size or train steps.[/red]"
         )
+
+    OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
+    print("#" * 40, OmegaConf.to_yaml(config).strip(), "#" * 40, sep="\n")
 
     # prepare optimizer and lr schedule
     optimizer = torch.optim.AdamW(
