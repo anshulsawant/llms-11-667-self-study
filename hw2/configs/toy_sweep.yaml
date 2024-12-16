@@ -7,9 +7,10 @@ device: auto                  # <- which device to put the model on (YOU DO NOT 
 name_prefix: toy-sweep
 tag: toy-sweep
 early_stopping: True
-early_stopping_loss: 100
-early_stopping_min_steps: 2000
-test_run: True
+early_stopping_loss: 1000
+early_stopping_min_steps: 2
+num_warmup_steps: 10
+num_training_steps: 20
 parameters:
   n_embd:
     - 4                      # <- dimension of token and positional embeddings 
@@ -21,10 +22,6 @@ parameters:
     - 5                # <- number of decoder blocks
   batch_size:
     - 6                # <- number of sequences to feed into the model at a time
-  num_warmup_steps:
-    - 10          # <- number of warmup steps in cosine annealing
-  num_training_steps:
-    - 20      # <- number of training steps in cosine annealing
   lr:
     - [1e-5, 5e-5]
     - [2e-5, 1e-4]

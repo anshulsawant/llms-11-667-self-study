@@ -261,6 +261,9 @@ def training_run(config, train_tokens, val_tokens):
     early_stopping_min_steps = config.get('early_stopping_min_steps', None)
     save_model = config.get('save_model', True)
     test_run = config.get('test_run', False)
+    swish = config.model_config.get('swish', False)
+    config.model_config.swish = swish
+
 
     os.makedirs(config.output_dir, exist_ok=True)
     OmegaConf.save(config, os.path.join(config.output_dir, "config.yaml"))
@@ -295,7 +298,7 @@ def training_run(config, train_tokens, val_tokens):
     )
     print(f"train dataset tokens = {len(train_tokens) / 1e6:.0f}M")
     
-    if (max_flops):
+    if max_flops in config:
         config.num_training_steps = int(max_flops//(model.flops_per_token *
                                                 config.grad_accumulation_steps *
                                                 config.batch_size *
