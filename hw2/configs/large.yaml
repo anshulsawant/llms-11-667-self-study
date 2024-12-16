@@ -1,0 +1,17 @@
+output_dir: outputs/best  # <- where the output files are written
+tokenizer_encoding: gpt2      # <- the tokenizer encoding, used by tiktoken (YOU SHOULD NOT CHANGE THIS)
+model_config:
+  n_embd: 256                  # <- dimension of token and positional embeddings 
+  n_head: 8                   # <- number of attention heads in multihead attention
+  n_positions: 64             # <- the maximum number of tokens that the model can take
+  n_layer: 8                  # <- number of decoder blocks
+  swish: False
+device: auto                  # <- which device to put the model on (YOU DO NOT NEED TO CHANGE THIS)
+batch_size: 32                # <- number of sequences to feed into the model at a time
+seq_len: 64               # <- length of each sequence in training and evaluation, <= model_config.n_positions
+num_warmup_steps: 2 # <- number of warmup steps in cosine annealing
+## max_flops: 6384e+17
+num_training_steps: 20       
+grad_accumulation_steps: 1    # <- number of micro steps of gradient accumulation before every model update
+min_lr: 1e-4             # <- minimum learning rate in cosine annealing
+max_lr: 5e-4                  # <- maximum learning rate in cosine annealing
