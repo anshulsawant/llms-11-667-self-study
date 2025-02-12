@@ -3,12 +3,12 @@ tokenizer_encoding: gpt2      # <- the tokenizer encoding, used by tiktoken (YOU
 model_config:
   n_embd: 256                  # <- dimension of token and positional embeddings 
   n_head: 8                   # <- number of attention heads in multihead attention
-  n_positions: 64             # <- the maximum number of tokens that the model can take
+  n_positions: 128             # <- the maximum number of tokens that the model can take
   n_layer: 8                  # <- number of decoder blocks
   swish: False
 device: auto                  # <- which device to put the model on (YOU DO NOT NEED TO CHANGE THIS)
 batch_size: 32                # <- number of sequences to feed into the model at a time
-seq_len: 64               # <- length of each sequence in training and evaluation, <= model_config.n_positions
+seq_len: 128               # <- length of each sequence in training and evaluation, <= model_config.n_positions
 num_warmup_steps: 1000 # <- number of warmup steps in cosine annealing
 ## max_flops: 6384e+17
 num_training_steps: 2000       

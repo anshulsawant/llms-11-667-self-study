@@ -250,7 +250,7 @@ def evaluate(
     return eval_results
 
 
-def training_run(config, train_tokens, val_tokens):
+def training_run(config, train_tokens, val_tokens, dry_run=False):
     max_flops = config.get('max_flops', None)
     num_training_steps = config.get('num_training_steps', None)
     run_no = config.get('run_no', None)
@@ -266,6 +266,27 @@ def training_run(config, train_tokens, val_tokens):
     config.model_config.swish = swish
 
 
+    tokenizer = tiktoken.get_encoding(config.tokenizer_encoding)
+    device = determine_device() if config.device == "auto" else config.device
+    model = DecoderLM(tokenizer.n_vocab, **config.model_config).to(device)
+    print(f"model parameters = {count_params(model) / 1e6:.0f}M")
+    
+    model_disk_size_MB = estimate_model_disk_size(model) * 1e-6
+    if model_disk_size_MB > 98:
+        print(
+            f"[red]WARNING: your model is {model_disk_size_MB:.1f}MB. "
+            "The largest model size allowed by GradeScope is 100MB, "
+            "and you may have trouble with submitting the assignment. "
+            "Please update your config so your model is at most 100 MB.[/red]"
+        )
+    else:
+        print(
+            f"Your model is {model_disk_size_MB:.1f}MB. This should be within "
+            "the 100MB limit of Gradescope."
+        )
+        
+    if dry_run:
+        return model, None
     os.makedirs(config.output_dir, exist_ok=True)
     assert config.seq_len <= config.model_config.n_positions
 

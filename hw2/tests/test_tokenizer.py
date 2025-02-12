@@ -11,8 +11,8 @@ def test_not_injective():
     tokenizer_name = "google-bert/bert-base-cased"
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
-    s1 = "Surely you're joking, My Feynman!"
-    s2 = "Surely you're joking,My Feynman! "
+    s1 = "Surely you're joking, Mr. Feynman!"
+    s2 = "Surely you're joking,Mr. Feynman! "
 
     assert s1 != s2 and tokenizer.encode(
         s1, add_special_tokens=False
