@@ -1,7 +1,7 @@
 import ast
 import operator
 from datasets import load_dataset, DatasetDict
-
+import re
 
 # Define supported operators
 operators = {
@@ -92,7 +92,7 @@ def can_use_calculator(s: str) -> bool:
     Hint:
         Q1.2
     """
-    return ...
+    return s.endswith('>>')
 
 
 def use_calculator(input: str) -> str:
@@ -110,11 +110,13 @@ def use_calculator(input: str) -> str:
 
     Hint: safe_eval
     """
+    p = re.compile('(.*)<<(.*)>>(.*)')
+    m = p.match(input)
     try:
-        return ...
+        return f'{m.group(1)}<<{m.group(2)}>>{safe_eval(m.group(2))}{m.group(3)}'
     except:
         # expression not well formed! fall back to next token prediction
-        return ...
+        return input
 
 
 def extract_label(answer: str) -> float:
