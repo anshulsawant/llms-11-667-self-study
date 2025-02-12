@@ -1,0 +1,18 @@
+{
+    "tests": [
+        {
+            "score": 5,
+            "max_score": 5,
+            "name": "test_can_use_calculator",
+            "output": "",
+            "visibility": "visible"
+        },
+        {
+            "score": 5,
+            "max_score": 5,
+            "name": "test_use_calculator",
+            "output": "",
+            "visibility": "visible"
+        }
+    ]
+}
