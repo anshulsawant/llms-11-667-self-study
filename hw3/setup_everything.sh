@@ -1,4 +1,4 @@
-bash setup-conda.sh
+bash setup_conda.sh
 source ~/.bashrc
 conda create -n cmu-llms-hw3 python=3.11
 conda activate cmu-llms-hw3
