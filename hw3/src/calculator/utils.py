@@ -110,12 +110,13 @@ def use_calculator(input: str) -> str:
 
     Hint: safe_eval
     """
-    p = re.compile('(.*)<<(.*)>>(.*)')
+    p = re.compile('(.*)<<(.*)>>', re.DOTALL)
     m = p.match(input)
     try:
-        return f'{m.group(1)}<<{m.group(2)}>>{safe_eval(m.group(2))}{m.group(3)}'
-    except:
+        return f'{m.group(1)}<<{m.group(2)}>>{safe_eval(m.group(2))}'
+    except Exception as e:
         # expression not well formed! fall back to next token prediction
+        print(e)
         return input
 
 
