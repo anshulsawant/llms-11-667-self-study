@@ -2,6 +2,8 @@ import ast
 import operator
 from datasets import load_dataset, DatasetDict
 import re
+import json
+import random
 
 # Define supported operators
 operators = {
@@ -125,3 +127,18 @@ def extract_label(answer: str) -> float:
         return float(answer.split(">>")[1])
     except:
         return float("nan")
+
+
+def analyse_eval(file='pythia-1b-asdiv/eval.jsonl'):
+    evals = []
+    with open(file, 'r') as f:
+        for l in f:
+            evals.append(json.loads(l))
+    x_calc = [1 if d['label'] == d['label-calc'] else 0 for d in evals]
+    x_no_calc = [1 if d['label'] == d['label-no-calc'] else 0 for d in evals]
+    print(f'Accuracy with calculator {sum(x_calc)/len(x_calc)}, Accuracy without calculator {sum(x_no_calc)/len(x_no_calc)}')
+    no_calc_wrong = [(d['text'], d['answer-calc'], d['answer-no-calc'])
+                     for d in evals if d['label'] == d['label-calc'] and d['label'] != d['label-no-calc']]
+    calc_wrong = [(d['text'], d['answer-calc'], d['answer-no-calc'])
+                  for d in evals if d['label'] != d['label-no-calc'] and d['label'] != d['label-calc']]
+    return (random.sample(no_calc_wrong, 1), random.sample(calc_wrong, 1))

@@ -1,0 +1,33 @@
+* Eval vs Safe Eval
+Eval will allow arbitrary python code to be executed. It may be possible to get model to generate dangerous python code, for example, via in-context learning.
+* Accuracy with and without calculator
+Accuracy with calculator is 60.13%. Accuracy without calculator is 35.22%.
+
+* Incorrect answer without calculator
+** Prompt
+Question: Since the townspeople requested that he makes a chocolate cake, he will need 306 lbs. of cocoa powder.
+If the mayor already gave him 259 lbs., how much cocoa powder does he still need?
+Answer:',
+** With calculator
+Question: Since the townspeople requested that he makes a chocolate cake, he will need 306 lbs. of cocoa powder.
+If the mayor already gave him 259 lbs., how much cocoa powder does he still need?
+Answer:<<306-259>>47
+** Without calculator
+Question: Since the townspeople requested that he makes a chocolate cake, he will need 306 lbs. of cocoa powder.
+If the mayor already gave him 259 lbs., how much cocoa powder does he still need?
+Answer:<<306-259>>13
+** Discussion
+While the model set up the computation correctly, it could not correctly compute the difference of the two numbers.
+
+* Incorrect answer without calculator
+** Prompt
+Question: Each side of a square kitchen tile is 7 inches long. What is the tile's area?
+Answer:
+** With calculator
+Question: Each side of a square kitchen tile is 7 inches long. What is the tile's area?
+Answer:<<7*4>>28
+** Without calculator
+Question: Each side of a square kitchen tile is 7 inches long. What is the tile's area?
+Answer:<<7*4>>28
+** Discussion
+The model probably did not understand the concept of area.
